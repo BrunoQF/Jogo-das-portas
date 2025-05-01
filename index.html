@@ -13,7 +13,12 @@
 
     h1 {
       font-size: 32px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
+    }
+
+    .placar {
+      font-size: 20px;
+      margin-bottom: 30px;
     }
 
     .question {
@@ -44,6 +49,12 @@
 
     .door.open {
       background: #4CAF50;
+      pointer-events: none;
+    }
+
+    .door.incorrect {
+      background: #b22222;
+      pointer-events: none;
     }
 
     .label {
@@ -53,6 +64,17 @@
       color: white;
       font-weight: bold;
       font-size: 18px;
+    }
+
+    .doorknob {
+      position: absolute;
+      top: 50%;
+      left: 10px;
+      width: 20px;
+      height: 20px;
+      background-color: yellow;
+      border-radius: 50%;
+      transform: translateY(-50%);
     }
 
     #result {
@@ -67,23 +89,49 @@
       font-size: 18px;
       cursor: pointer;
     }
+
+    #restartBtn {
+      display: none;
+      background-color: #ff4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
 
   <h1>Jogo das Portas Matemáticas</h1>
+
+  <div class="placar">
+    🧡 Vidas: <span id="vidas">3</span> | ⭐ Pontuação: <span id="pontuacao">0</span>
+  </div>
+
   <div class="question" id="question">Carregando pergunta...</div>
 
   <div class="doors" id="doors"></div>
 
   <div id="result"></div>
 
-  <button onclick="generateQuestion()">Nova Pergunta</button>
+  <button onclick="generateQuestion()" id="nextBtn">Nova Pergunta</button>
+  <button onclick="restartGame()" id="restartBtn">🔁 Recomeçar</button>
 
   <script>
     let correctAnswer = null;
+    let vidas = 3;
+    let pontuacao = 0;
+    let jogoAtivo = true;
+    let perguntaRespondida = false;
+
+    function atualizarPlacar() {
+      document.getElementById("vidas").textContent = vidas;
+      document.getElementById("pontuacao").textContent = pontuacao;
+    }
 
     function generateQuestion() {
+      if (!jogoAtivo) return;
+
+      perguntaRespondida = false;
       document.getElementById("result").textContent = "";
       const doorsContainer = document.getElementById("doors");
       doorsContainer.innerHTML = "";
@@ -92,14 +140,12 @@
       let questionText, answer;
 
       if (isFirstDegree) {
-        // Função de 1º grau
         const m = Math.floor(Math.random() * 5) + 1;
         const b = Math.floor(Math.random() * 10) - 5;
         const x = Math.floor(Math.random() * 10) - 5;
         answer = m * x + b;
         questionText = `Qual o valor de y em y = ${m}x + ${b}, quando x = ${x}?`;
       } else {
-        // Função de 2º grau
         const a = Math.floor(Math.random() * 3) + 1;
         const b = Math.floor(Math.random() * 5) - 2;
         const c = Math.floor(Math.random() * 6) - 3;
@@ -111,29 +157,51 @@
       document.getElementById("question").textContent = questionText;
       correctAnswer = answer;
 
-      // Gera 2 alternativas incorretas
       const wrong1 = answer + Math.floor(Math.random() * 5 + 1);
       const wrong2 = answer - Math.floor(Math.random() * 5 + 1);
       const options = shuffle([answer, wrong1, wrong2]);
 
-      // Cria as portas com opções
       options.forEach(opt => {
         const door = document.createElement("div");
         door.className = "door";
+        
+        // Adicionando a bolinha amarela como maçaneta
+        const doorknob = document.createElement("div");
+        doorknob.className = "doorknob";
+        
         door.innerHTML = `<div class="label">${opt}</div>`;
+        door.appendChild(doorknob);
+        
         door.onclick = () => checkAnswer(door, opt);
         doorsContainer.appendChild(door);
       });
     }
 
     function checkAnswer(door, chosen) {
+      if (!jogoAtivo || perguntaRespondida) return;
+
+      perguntaRespondida = true;
+
       if (chosen === correctAnswer) {
         door.classList.add("open");
         document.getElementById("result").textContent = "🎉 Parabéns! Você acertou!";
+        pontuacao += 1;
       } else {
-        door.style.background = "#b22222";
-        document.getElementById("result").textContent = "❌ Opa! Tente novamente.";
+        door.classList.add("incorrect");
+        document.getElementById("result").textContent = "❌ Errou! Você perdeu uma vida.";
+        vidas -= 1;
+        if (vidas === 0) {
+          jogoAtivo = false;
+          document.getElementById("result").textContent = "💀 Game Over! Fim de jogo.";
+          document.getElementById("restartBtn").style.display = "inline-block";
+          document.getElementById("nextBtn").disabled = true;
+        }
       }
+
+      atualizarPlacar();
+      // Desativa todas as portas
+      const portas = document.querySelectorAll(".door");
+      portas.forEach(p => p.style.pointerEvents = "none");
     }
 
     function shuffle(array) {
@@ -144,8 +212,22 @@
       return array;
     }
 
-    // Gera a primeira pergunta ao carregar a página
-    window.onload = generateQuestion;
+    function restartGame() {
+      vidas = 3;
+      pontuacao = 0;
+      jogoAtivo = true;
+      perguntaRespondida = false;
+      atualizarPlacar();
+      generateQuestion();
+      document.getElementById("restartBtn").style.display = "none";
+      document.getElementById("nextBtn").disabled = false;
+      document.getElementById("result").textContent = "";
+    }
+
+    window.onload = () => {
+      atualizarPlacar();
+      generateQuestion();
+    };
   </script>
 
 </body>
